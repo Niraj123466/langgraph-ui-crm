@@ -50,17 +50,9 @@ def _get_auth_headers() -> Optional[Dict[str, str]]:
         return None
 
 
-async def setup_zoho_agent():
+async def create_mcp_client() -> MultiServerMCPClient:
     """
-    Build and return a LangGraph agent wired to Zoho MCP tools.
-
-    The MCP client is configured for a single HTTP server that exposes Zoho CRM
-    helpers (create lead, search contacts, etc.). `load_mcp_tools` introspects
-    that endpoint so LangGraph can call whichever Zoho tool is relevant at
-    runtime.
-
-    If OAuth credentials are configured, access tokens are automatically
-    refreshed before expiration to ensure continuous access.
+    Create and return a configured MultiServerMCPClient.
     """
     server_name = "zoho_crm"
 
@@ -81,15 +73,13 @@ async def setup_zoho_agent():
             server_name: connection_config,
         }
     )
+    return client
 
-    # Open a short-lived session to enumerate tools and capture schemas.
-    async with client.session(server_name) as session:
-        tools = await load_mcp_tools(
-            session,
-            connection=client.connections[server_name],
-            server_name=server_name,
-        )
 
+def create_agent(tools: list) -> Any:
+    """
+    Create the LangGraph ReAct agent with the given tools.
+    """
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
         api_key=GOOGLE_API_KEY,
@@ -141,3 +131,26 @@ async def run_conversation(agent_app, prompt: str) -> Dict[str, Any]:
 
     return final_response or {}
 
+
+async def refine_prompt(user_input: str) -> str:
+    """
+    Uses the LLM to convert raw user input into a clear, actionable prompt for the ReAct agent.
+    """
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        api_key=GOOGLE_API_KEY,
+        temperature=0,
+    )
+    
+    system_prompt = (
+        "You are an expert at translating user requests into clear, actionable instructions "
+        "for an AI agent that manages Zoho CRM. The agent has tools to search, create, and update "
+        "leads, contacts, and deals.\n\n"
+        "Convert the user's input into a precise, step-by-step prompt for the agent. "
+        "If the user input is already clear, just repeat it. "
+        "Do not add any preamble or explanation, just return the refined prompt.\n\n"
+        f"User Input: {user_input}"
+    )
+    
+    response = await llm.ainvoke(system_prompt)
+    return response.content
