@@ -21,6 +21,18 @@ ZOHO_MCP_URL: str = os.getenv(
 # Google Generative AI key used by `langchain-google-genai`.
 GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY")
 
+# Zoho OAuth credentials for token-based authentication
+# These are used to obtain and refresh access tokens automatically
+ZOHO_CLIENT_ID: str | None = os.getenv("ZOHO_CLIENT_ID")
+ZOHO_CLIENT_SECRET: str | None = os.getenv("ZOHO_CLIENT_SECRET")
+ZOHO_REDIRECT_URI: str | None = os.getenv(
+    "ZOHO_REDIRECT_URI", "http://localhost:8080/oauth/callback"
+)
+ZOHO_SCOPE: str = os.getenv("ZOHO_SCOPE", "ZohoCRM.modules.ALL")
+ZOHO_ACCOUNTS_SERVER: str = os.getenv(
+    "ZOHO_ACCOUNTS_SERVER", "https://accounts.zoho.com"
+)
+
 
 def validate_config() -> None:
     """
@@ -37,5 +49,29 @@ def validate_config() -> None:
         raise RuntimeError(
             f"Missing required environment variables: {joined}. "
             "Ensure they are set in your shell or .env file."
+        )
+
+
+def validate_oauth_config() -> None:
+    """
+    Validate OAuth configuration for token-based authentication.
+
+    Raises:
+        RuntimeError: If required OAuth credentials are missing
+    """
+    missing = []
+    if not ZOHO_CLIENT_ID:
+        missing.append("ZOHO_CLIENT_ID")
+    if not ZOHO_CLIENT_SECRET:
+        missing.append("ZOHO_CLIENT_SECRET")
+    if not ZOHO_REDIRECT_URI:
+        missing.append("ZOHO_REDIRECT_URI")
+
+    if missing:
+        joined = ", ".join(missing)
+        raise RuntimeError(
+            f"Missing required OAuth environment variables: {joined}. "
+            "These are needed for automatic token refresh. "
+            "Set them in your .env file or shell environment."
         )
 
