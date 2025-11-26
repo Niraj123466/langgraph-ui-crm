@@ -4,5 +4,6 @@ langchain-google-genai
 langchain-mcp-adapters
 python-dotenv
 httpx
+streamlit
 
 
